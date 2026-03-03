@@ -20,8 +20,7 @@ pub fn get_repos_file() -> PathBuf {
 }
 
 pub fn get_sync_dir() -> PathBuf {
-    let dir = get_config_dir()
-        .join("sync");
+    let dir = get_config_dir().join("sync");
 
     if !dir.exists() {
         fs::create_dir_all(&dir).expect("Failed to create repository synchronization directory");

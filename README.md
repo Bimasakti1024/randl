@@ -36,6 +36,10 @@ randl pull
 ```
 The pull subcommand have a flag called `max-depth` which will set the maximum depth for a nested repository.
 
+If you want to set on what directory the reward should be downloaded, You can use the `output-directory` flag.
+
+And if you do not want to download it, You can use the `dry-run` flag.
+
 ### Migrating from RTD
 This project was previously known as RTD. To migrate, update your binary name from `rtd` to `randl`. Your existing repos list at `~/.config/rtd/` will need to be moved to `~/.config/randl/`.
 
@@ -51,7 +55,7 @@ randl picks a random repository from your local index, then picks a random line 
 
 3. Reward or nested?
 - If the line is a URL → you get that file as your reward.
-- If the line starts with `Nested` → randl fetches that repo and picks a random line from it, repeating until it hits a reward.
+- If the line starts with `Nested`, randl fetches that repo and picks a random line from it, repeating until it hits a reward.
 
 ## Creating your own repository
 
@@ -77,5 +81,5 @@ Nested https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb8619
 
 ## License
 
-MIT
+This project is licensed under the MIT License.
 

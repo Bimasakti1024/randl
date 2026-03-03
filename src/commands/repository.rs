@@ -7,10 +7,10 @@ use std::io::{BufRead, BufReader, Write};
 
 pub fn run(action: RepositoryAction) -> Result<(), Box<dyn std::error::Error>> {
     match action {
-        RepositoryAction::Add { url }    => add(url),
+        RepositoryAction::Add { url } => add(url),
         RepositoryAction::Remove { url } => remove(url),
-        RepositoryAction::List           => list(),
-        RepositoryAction::Sync           => sync(),
+        RepositoryAction::List => list(),
+        RepositoryAction::Sync => sync(),
     }
 }
 
@@ -53,7 +53,8 @@ fn remove(url: String) -> Result<(), Box<dyn std::error::Error>> {
         .lines()
         .filter(|line| *line != url)
         .collect::<Vec<&str>>()
-        .join("\n") + "\n";
+        .join("\n")
+        + "\n";
 
     let _ = write(get_repos_file(), new_repos_content);
     Ok(())
@@ -63,13 +64,10 @@ fn remove(url: String) -> Result<(), Box<dyn std::error::Error>> {
 fn list() -> Result<(), Box<dyn std::error::Error>> {
     let repos_file = get_repos_file();
     if !repos_file.exists() {
-        print!("No repositores added yet.");
+        println!("No repositores added yet.");
         return Ok(());
     }
-    println!(
-        "{}",
-        read_to_string(repos_file)?
-    );
+    println!("{}", read_to_string(repos_file)?);
     Ok(())
 }
 
@@ -81,25 +79,49 @@ fn sync() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    let mut success = 0;
+    let mut error = 0;
     let repos = read_to_string(repos_file)?;
     let sync_dir = get_sync_dir();
 
     for line in repos.lines() {
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
 
-        println!("Syncing {}...", line);
-        let content = reqwest::blocking::get(line)?.text()?;
+        print!("Syncing {}: ", line);
+        let content = match reqwest::blocking::get(line) {
+            Ok(response) => match response.error_for_status() {
+                Ok(r) => match r.text() {
+                    Ok(text) => text,
+                    Err(e) => {
+                        eprintln!("Failed to read response from {}: {}.", line, e);
+                        error += 1;
+                        continue;
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Failed to fetch {}: {}.", line, e);
+                    error += 1;
+                    continue;
+                }
+            },
+            Err(e) => {
+                eprintln!("Failed to fetch {}: {}.", line, e);
+                error += 1;
+                continue;
+            }
+        };
 
         // turn URL into a safe filename
-        let filename = line
-            .replace("https://", "")
-            .replace("/", "_");
+        let filename = line.replace("https://", "").replace("/", "_");
         let dest = sync_dir.join(filename);
 
         write(dest, content)?;
-        println!("Done.");
+        success += 1;
+        println!("Ok.");
     }
 
-    println!("All repository has been synced.");
+    println!("{} Repository synced and {} failed.", success, error);
     Ok(())
 }
