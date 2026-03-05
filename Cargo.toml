@@ -2,6 +2,7 @@
 name = "randl"
 version = "0.2.0"
 edition = "2024"
+rust-version = "1.85.1"
 
 [dependencies]
 asky = "0.1.1"
