@@ -68,12 +68,7 @@ pub fn run(args: PullArgs) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn follow(
-    repos: &[String],
-    client: &Client,
-    args: &PullArgs,
-    current_depth: u32,
-) -> FollowResult {
+fn follow(repos: &[String], client: &Client, args: &PullArgs, current_depth: u32) -> FollowResult {
     let max_depth = args.max_depth;
     if current_depth > max_depth && max_depth > 0 {
         eprintln!("Max depth reached.");
