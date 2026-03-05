@@ -14,7 +14,7 @@ Here is how to add a repository:
 ```bash
 randl repository add <URL>
 ```
-The first repository in this project is: [https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/37589e33d1547038c4c69e4c9fd796644c73071b/randl-repo.txt](https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/randl-repo.txt)
+The first repository in this project is: [https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/randl-repo.txt](https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/randl-repo.txt)
 
 And to remove a repository:
 ```bash
