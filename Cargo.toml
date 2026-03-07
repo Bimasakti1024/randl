@@ -1,8 +1,17 @@
 [package]
 name = "randl"
 version = "0.2.0"
+authors = ["Bimasakti"]
+description = "A gacha-style random file downloader powered by a federated network of static-hosted repositories."
 edition = "2024"
 rust-version = "1.87.0"
+repository = "https://github.com/Bimasakti1024/randl"
+
+[package.metadata.wix]
+upgrade-guid = "9E18FF7D-8949-450E-BAE2-F5798E7CDF49"
+path-guid = "4E5BD53A-FA62-4D67-8E47-2C65A97F687E"
+license = false
+eula = false
 
 [dependencies]
 asky = "0.1.1"
@@ -12,3 +21,8 @@ fs2 = "0.4.3"
 rand = "0.10.0"
 reqwest = { version = "0.12", features = ["blocking"] }
 size = "0.5.0"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
