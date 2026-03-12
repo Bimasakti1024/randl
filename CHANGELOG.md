@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-03-12
+### Security
+- updated `quinn-proto` to 0.11.14 to patch a potential Denial of Service vulnerability
+
 ## [0.3.0] - 2026-03-07
 ### Added
 - `repo` alias for `repository` subcommand
@@ -10,7 +14,7 @@ All notable changes to this project will be documented in this file.
 - `--timeout` flag for downloading timeout at pulling reward or nested repository following
 - `check` to find dead repository
 
-### Modification
+### Changes
 - repository synchronization can now be targetting a repository instead of synchronizing all repositories.
 
 ## [0.2.0] - 2026-03-04

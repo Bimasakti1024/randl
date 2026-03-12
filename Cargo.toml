@@ -5,12 +5,13 @@ authors = ["Bimasakti"]
 description = "A gacha-style random file downloader powered by a federated network of static-hosted repositories."
 edition = "2024"
 rust-version = "1.87.0"
+license = "MIT"
 repository = "https://github.com/Bimasakti1024/randl"
 
 [package.metadata.wix]
 upgrade-guid = "9E18FF7D-8949-450E-BAE2-F5798E7CDF49"
 path-guid = "4E5BD53A-FA62-4D67-8E47-2C65A97F687E"
-license = false
+license = true
 eula = false
 
 [dependencies]
@@ -19,8 +20,11 @@ clap = { version = "4", features = ["derive"] }
 dirs = "6.0.0"
 fs2 = "0.4.3"
 rand = "0.10.0"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["blocking", "rustls"] }
+serde = { version = "1", features = ["derive"] }
+figment = { version = "0.10", features = ["toml"] }
 size = "0.5.0"
+toml = "1.0.6"
 
 [profile.release]
 opt-level = "z"
