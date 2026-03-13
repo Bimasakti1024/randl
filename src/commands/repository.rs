@@ -1,162 +1,186 @@
 // src/commands/repository.rs
 use crate::cli::RepositoryAction;
-use crate::config::{get_repos_file, get_sync_dir};
-
-use std::fs::{File, OpenOptions, read_to_string, write};
-use std::io::{BufRead, BufReader, Write};
+use crate::config::{get_config_file, get_sync_dir, get_toml_config};
+use std::fs::{write, remove_file};
 
 pub fn run(action: RepositoryAction) -> Result<(), Box<dyn std::error::Error>> {
     match action {
-        RepositoryAction::Add { url } => add(url),
-        RepositoryAction::Remove { url } => remove(url),
+        RepositoryAction::Add { name, url } => add(name, url),
+        RepositoryAction::Remove { name, keep_cache } => remove(name, keep_cache),
         RepositoryAction::List => list(),
-        RepositoryAction::Sync { url } => sync(url),
+        RepositoryAction::Sync { name } => sync(name),
         RepositoryAction::Check => check(),
     }
 }
 
-// function handler for add subcommand
-fn add(url: String) -> Result<(), Box<dyn std::error::Error>> {
-    let repos_file = get_repos_file();
+/*
+    The function handler for the add subcommand,
+    Parameter:
+        - name: name of the repository
+        - url: url of the repository
+    
+    It will first get the configuration toml
+    and then add the url as a repository under the
+    received name with it enabled by default.
+ */
+fn add(name: String, url: String) -> Result<(), Box<dyn std::error::Error>> {
+    let mut doc: toml::Value = get_toml_config();
 
-    // read pass
-    if repos_file.exists() {
-        let reader = BufReader::new(File::open(&repos_file)?);
-        for line in reader.lines() {
-            if line? == url {
-                println!("Repository {} already exists.", url);
-                return Ok(());
+    let mut repo = toml::map::Map::new();
+    repo.insert("url".to_string(), toml::Value::String(url));
+    repo.insert("enabled".to_string(), toml::Value::Boolean(true));
+
+    doc["repositories"]
+        .as_table_mut()
+        .unwrap()
+        .insert(name, toml::Value::Table(repo));
+
+    write(&get_config_file(), toml::to_string(&doc)?)?;
+    Ok(())
+}
+
+/*
+    function handler for remove subcommand
+    parameters:
+        - name: the name of the repository
+    
+    It will parse the configuration first, then
+    it will remove the selected repository and 
+    will write it to the configuration file again.
+    After writing it to the configuration file, it will
+    remove the repository cache (at the sync/ directory).
+*/
+fn remove(name: String, keep_cache: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let mut doc: toml::Value = get_toml_config();
+
+    /* 
+        if keep_cache does not provided
+        it will use the configuration as a fallback
+    */
+    let keep_cache = if keep_cache {
+        true
+    } else {
+        doc["configuration"]
+            .as_table()
+            .and_then(|t| t["keep_cache"].as_bool())
+            .unwrap_or(false)
+    };
+
+    if doc["repositories"].as_table().unwrap().contains_key(&name) {
+        doc["repositories"].as_table_mut().unwrap().remove(&name);
+
+        if !keep_cache {
+            let cache_file = get_sync_dir().join(&name);
+            if cache_file.exists() {
+                remove_file(&cache_file)?;
             }
         }
-    }
-
-    // append pass
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(&repos_file)?;
-
-    writeln!(file, "{}", url)?;
-    Ok(())
-}
-
-// function handler for remove command
-fn remove(url: String) -> Result<(), Box<dyn std::error::Error>> {
-    let repos_file = get_repos_file();
-    let repos = read_to_string(repos_file)?;
-
-    if !repos.lines().any(|line| line == url) {
-        eprintln!("Repository {} not found.", url);
-        return Ok(());
-    }
-
-    let new_repos_content: String = repos
-        .lines()
-        .filter(|line| *line != url)
-        .collect::<Vec<&str>>()
-        .join("\n")
-        + "\n";
-
-    let _ = write(get_repos_file(), new_repos_content);
-    Ok(())
-}
-
-// function handler for list command
-fn list() -> Result<(), Box<dyn std::error::Error>> {
-    let repos_file = get_repos_file();
-    if !repos_file.exists() {
-        println!("No repositores added yet.");
-        return Ok(());
-    }
-    println!("{}", read_to_string(repos_file)?);
-    Ok(())
-}
-
-// function handler for command sync
-fn sync(url: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    let mut repos: Vec<String> = Vec::new();
-    if !url.is_empty() {
-        for single_url in url {
-            repos.push(single_url);
-        }
     } else {
-        let repos_file = get_repos_file();
-        if !repos_file.exists() {
-            println!("No repositories added yet.");
-            return Ok(());
-        }
-        repos = read_to_string(repos_file)?
-            .lines()
-            .map(String::from)
-            .collect::<Vec<String>>();
+        eprintln!("Repository {} does not exist.", name);
     }
 
-    let mut success = 0;
-    let mut error = 0;
-    let sync_dir = get_sync_dir();
+    write(&get_config_file(), toml::to_string(&doc)?)?;
+    Ok(())
+}
 
-    for url in &repos {
-        if url.is_empty() {
-            continue;
-        }
+/* 
+    function handler for subcommand list
+    It will read the repositories and then print
+    it out
+*/
+fn list() -> Result<(), Box<dyn std::error::Error>> {
+    let doc: toml::Value = get_toml_config();
 
-        println!("Syncing {}...", url);
-        let content = match reqwest::blocking::get(url) {
-            Ok(response) => match response.error_for_status() {
-                Ok(r) => match r.text() {
-                    Ok(text) => text,
-                    Err(e) => {
-                        eprintln!(" Failed to read response from {}: {}.", url, e);
-                        error += 1;
-                        continue;
-                    }
-                },
+    for (name, val) in doc["repositories"].as_table().unwrap() {
+        println!("{}:", name);
+        println!("  url: {}", val["url"].as_str().unwrap().to_string());
+        println!("  enabled: {}", val["enabled"].to_string())
+    }
+
+    Ok(())
+}
+
+/*
+    A function to handle synchronization for a single
+    repository.
+    parameters:
+        - name: the name of the repository
+        - url: the url of the repository
+    it will download the repository content and save it
+    to the synchronization directory (sync/ directory in
+    the config directory) under the name of the repository.
+*/
+fn sync_repo(name: String, url: String) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Syncing {}...", name);
+    let content = match reqwest::blocking::get(&url) {
+        Ok(response) => match response.error_for_status() {
+            Ok(r) => match r.text() {
+                Ok(text) => text,
                 Err(e) => {
-                    eprintln!(" Failed to fetch {}: {}.", url, e);
-                    error += 1;
-                    continue;
+                    eprintln!(" Failed to read response from {}: {}.", url, e.to_string());
+                    return Err("Failed to read response".into());
                 }
             },
             Err(e) => {
-                eprintln!(" Failed to fetch {}: {}.", url, e);
-                error += 1;
-                continue;
+                eprintln!(" Failed to fetch {}: {}.", url, e.to_string());
+                return Err("Failed to fetch".into());
             }
-        };
+        },
+        Err(e) => {
+            eprintln!(" Failed to fetch {}: {}.", url, e.to_string());
+            return Err("Failed to fetch".into());
+        }
+    };
 
-        // turn URL into a safe filename
-        let filename = url.replace("https://", "").replace("/", "_");
-        let dest = sync_dir.join(filename);
+    let dest = get_sync_dir().join(name);
 
-        write(dest, content)?;
-        success += 1;
-        println!("  Ok.");
+    write(dest, content)?;
+    Ok(())
+}
+
+/*
+    function handler for subcommand sync
+    parameters:
+        - names: an optional argument for targetted synchronization
+    It will iterate all repository (or only selected one) and will 
+    synchronize it using the sync_repo(name, url) function
+*/
+fn sync(names: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut success = 0;
+    let mut error = 0;
+    let config = get_toml_config();
+    let repos = config["repositories"].as_table().unwrap();
+
+    for (name, val) in repos {
+        if !val["enabled"].as_bool().unwrap() {
+            continue;
+        }
+        // if names is provided, only sync those
+        if !names.is_empty() && !names.contains(name) {
+            continue;
+        }
+        let url = val["url"].as_str().unwrap().to_string();
+        match sync_repo(name.clone(), url) {
+            Ok(_) => success += 1,
+            Err(_) => error += 1,
+        }
     }
-
-    println!("{} Repository synced and {} failed.", success, error);
+    println!("{} repository synced and {} failed.", success, error);
     Ok(())
 }
 
 // function handler for command check
 fn check() -> Result<(), Box<dyn std::error::Error>> {
-    let repos_file = get_repos_file();
-    let repos: Vec<String> = read_to_string(repos_file)?
-        .lines()
-        // Trim empty line
-        .filter(|l| !l.trim().is_empty())
-        .map(|s| s.to_string())
-        .collect();
-
-    if repos.is_empty() {
-        println!("No repository found.");
-        return Ok(())
-    }
-    println!("Found {} repositories.", repos.len());
+    let doc: toml::Value = get_toml_config();
 
     let mut alive = 0;
     let mut dead = 0;
-    for url in repos {
-        println!("Checking: {}", url);
+    for (name, data) in doc["repositories"].as_table().unwrap() {
+        if !data["enabled"].as_bool().unwrap() {
+            continue;
+        }
+        let url = data["url"].as_str().unwrap().to_string();
+        println!("Checking: {}", name);
         match reqwest::blocking::Client::new().head(&url).send() {
             Ok(response) => match response.error_for_status() {
                 Ok(_) => {
@@ -173,7 +197,6 @@ fn check() -> Result<(), Box<dyn std::error::Error>> {
                 dead += 1;
             }
         }
-        alive += 1;
         println!(" Repository okay.");
     }
     println!("Checking done:\n Alive: {}\n Dead: {}", alive, dead);

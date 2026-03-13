@@ -1,6 +1,6 @@
 [package]
 name = "randl"
-version = "0.3.1"
+version = "1.0.0-alpha.1"
 authors = ["Bimasakti"]
 description = "A gacha-style random file downloader powered by a federated network of static-hosted repositories."
 edition = "2024"
@@ -18,26 +18,28 @@ eula = false
 asky = "0.1.1"
 clap = { version = "4", features = ["derive"] }
 dirs = "6.0.0"
-fs2 = "0.4.3"
-rand = "0.10.0"
-reqwest = { version = "0.13.2", default-features = false, features = ["blocking", "rustls"] }
-serde = { version = "1", features = ["derive"] }
 figment = { version = "0.10", features = ["toml"] }
+rand = "0.10.0"
+reqwest = { version = "0.13.2", default-features = false, features = [
+  "blocking",
+  "rustls"
+] }
+serde = { version = "1", features = ["derive"] }
 size = "0.5.0"
 toml = "1.0.6"
 
 [profile.release]
 opt-level = "z"
-lto = true
-codegen-units = 1
 strip = true
+lto = true
 panic = "abort"
+codegen-units = 1
 
 # Optimize dependencies
 [profile.release.package."*"]
 opt-level = "z"
-codegen-units = 1
 strip = true
+codegen-units = 1
 
 # The profile that 'dist' will build with
 [profile.dist]

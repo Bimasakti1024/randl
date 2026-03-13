@@ -21,15 +21,15 @@ pub enum Commands {
     },
 }
 
-#[derive(Args)]
+#[derive(Args, serde::Serialize)]
 pub struct PullArgs {
     /// Maximum depth for nested repository
-    #[arg(short, long, default_value_t = 0)]
-    pub max_depth: u32,
+    #[arg(short, long)]
+    pub max_depth: Option<u32>,
 
     /// The output directory the reward will be saved
-    #[arg(short, long, default_value = ".")]
-    pub output_directory: std::path::PathBuf,
+    #[arg(short, long)]
+    pub output_directory: Option<std::path::PathBuf>,
 
     /// Toggle dry run
     #[arg(short, long, default_value_t = false)]
@@ -40,12 +40,12 @@ pub struct PullArgs {
     pub no_confirm: bool,
 
     /// Repeat pull
-    #[arg(short, long, default_value_t = 1)]
-    pub repeat: u16,
+    #[arg(short, long)]
+    pub repeat: Option<u16>,
 
     /// Download timeout
-    #[arg(short, long, default_value_t = 30)]
-    pub timeout: u64,
+    #[arg(short, long)]
+    pub timeout: Option<u64>,
 
     /// Pull from a repository without adding
     #[arg(short, long)]
@@ -55,16 +55,29 @@ pub struct PullArgs {
 #[derive(Subcommand)]
 pub enum RepositoryAction {
     /// Add a repository
-    Add { url: String },
+    Add {
+        /// Name of the repository
+        name: String,
+
+        /// url of the repository
+        url: String
+    },
 
     /// Remove a repository
-    Remove { url: String },
+    Remove {
+        /// Name of the repository
+        name: String,
+
+        /// Remove cache
+        #[arg(short, long, default_value_t = false)]
+        keep_cache: bool,
+    },
 
     /// List all repositories
     List,
 
     /// Synchronize a repository (all repository by default)
-    Sync { url: Vec<String> },
+    Sync { name: Vec<String> },
 
     /// Check dead repository
     Check,

@@ -1,15 +1,17 @@
 // src/commands/pull.rs
 use asky::Confirm;
+use figment::providers::Format;
 use rand::prelude::*;
 use reqwest::blocking::Client;
 use size::Size;
-use std::fs::{self, File, read_to_string};
+use std::fs::{File, read_to_string};
 use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
+use figment::{Figment, providers::{Toml, Serialized}};
 
 use crate::cli::PullArgs;
-use crate::config::get_sync_dir;
+use crate::config::{Config, get_config_file, get_sync_dir};
 
 enum FollowResult {
     Done,
@@ -18,22 +20,30 @@ enum FollowResult {
 }
 
 pub fn run(args: PullArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let config: Config = Figment::new()
+        .merge(Toml::file(get_config_file()))
+        .merge(Serialized::defaults(&args))
+        .extract()?;
+    let conf_ref = &config.configuration;
+
     // if the form flag is provided an argument
     if let Some(ref url) = args.from {
         println!("Pulling from: {}", url);
 
         let client = Client::builder()
-        .timeout(Duration::from_secs(args.timeout))
+        .timeout(Duration::from_secs(
+            conf_ref.timeout
+        ))
         .build()?;
         let repos = fetch_lines(&client, url)?;
-        for _ in 1..=args.repeat {
+        for _ in 1..=conf_ref.repeat {
             loop {
-                match follow(&repos, &client, &args, 1) {
+                match follow(&repos, &client, &config, 1) {
                     FollowResult::Done => break,
                     FollowResult::Retry => continue,
                     FollowResult::Error(e) => {
-                        eprintln!("Error: {}", e);
-                        if args.no_confirm {
+                        eprintln!("{}", e.to_string());
+                        if conf_ref.no_confirm {
                             continue;
                         }
                         if Confirm::new("Continue? ").prompt()? {
@@ -49,27 +59,22 @@ pub fn run(args: PullArgs) -> Result<(), Box<dyn std::error::Error>> {
     }
     println!("Loading repositories...");
 
-    let mut repo_files: Vec<PathBuf> = Vec::new();
-    for entry in fs::read_dir(get_sync_dir())? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_file() {
-            repo_files.push(path);
-        }
-    }
+    let repos = &config.repositories;
+    let mut rng = rand::rng();
 
-    if repo_files.is_empty() {
-        eprintln!("No repositories synced. Run: randl repository sync");
+    let enabled: Vec<_> = repos
+        .iter()
+        .filter(|(_, data)| data.enabled)
+        .collect();
+
+    if enabled.is_empty() {
+        eprintln!("No enabled repositories.");
         return Ok(());
     }
 
-    println!("Selecting...");
-    let mut rng = rand::rng();
-    let repo_path = repo_files
-        .choose(&mut rng)
-        .ok_or("Failed to choose a random repository.")?;
+    let (srepo_name, _) = enabled.choose(&mut rng).unwrap();
 
-    let repo_content = read_to_string(repo_path)?;
+    let repo_content = read_to_string(get_sync_dir().join(srepo_name))?;
 
     // Collect repository and remove comment
     let repos: Vec<String> = repo_content
@@ -79,22 +84,21 @@ pub fn run(args: PullArgs) -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     if repos.is_empty() {
-        let name = repo_path.file_name().unwrap_or_default().to_string_lossy();
-        eprintln!("Repository {} is empty.", name);
+        println!("Repository {} is empty.", srepo_name);
         return Ok(());
     }
 
     let client = Client::builder()
-        .timeout(Duration::from_secs(args.timeout))
+        .timeout(Duration::from_secs(conf_ref.timeout))
         .build()?;
-    for _ in 1..=args.repeat {
+    for _ in 1..=conf_ref.repeat {
         loop {
-            match follow(&repos, &client, &args, 1) {
+            match follow(&repos, &client, &config, 1) {
                 FollowResult::Done => break,
                 FollowResult::Retry => continue,
                 FollowResult::Error(e) => {
-                    eprintln!("Error: {}", e);
-                    if args.no_confirm {
+                    println!("{}", e.to_string());
+                    if conf_ref.no_confirm {
                         continue;
                     }
                     if Confirm::new("Continue? ").prompt()? {
@@ -110,11 +114,12 @@ pub fn run(args: PullArgs) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn follow(repos: &[String], client: &Client, args: &PullArgs, current_depth: u32) -> FollowResult {
-    let max_depth = args.max_depth;
+fn follow(repos: &[String], client: &Client, config: &Config, current_depth: u32) -> FollowResult {
+    let conf_ref = &config.configuration;
+    let max_depth = conf_ref.max_depth;
     if current_depth > max_depth && max_depth > 0 {
-        eprintln!("Max depth reached.");
-        if args.no_confirm { return FollowResult::Retry }
+        println!("Max depth reached.");
+        if conf_ref.no_confirm { return FollowResult::Retry }
         return match Confirm::new("Retry?").prompt() {
             Ok(true) => FollowResult::Retry,
             Ok(false) => FollowResult::Done,
@@ -132,11 +137,11 @@ fn follow(repos: &[String], client: &Client, args: &PullArgs, current_depth: u32
         [url] => {
             // Attempt download if not dry run
             println!("Reward: {}.", filename_from_url(url));
-            if args.dry_run {
+            if conf_ref.dry_run {
                 println!("Reward is not downloaded because it is a dry run.");
                 FollowResult::Done
             } else {
-                match download(url, client, args.output_directory.as_path(), args.no_confirm) {
+                match download(url, client, conf_ref.output_directory.as_path(), conf_ref.no_confirm) {
                     Ok(_) => FollowResult::Done,
                     Err(e) => {
                         // Distinguish user cancellation from real errors
@@ -144,7 +149,7 @@ fn follow(repos: &[String], client: &Client, args: &PullArgs, current_depth: u32
                             println!("Re-rolling...");
                             FollowResult::Retry
                         } else {
-                            eprintln!("Download failed: {}\nRetrying...", e);
+                            eprintln!("Download failed: {e}\nRetrying...");
                             FollowResult::Retry
                         }
                     }
@@ -154,7 +159,7 @@ fn follow(repos: &[String], client: &Client, args: &PullArgs, current_depth: u32
         ["Nested", url] => {
             // Fetch nested repo and recurse
             match fetch_lines(client, url) {
-                Ok(nested) => follow(&nested, client, args, current_depth + 1),
+                Ok(nested) => follow(&nested, client, config, current_depth + 1),
                 Err(e) => FollowResult::Error(e),
             }
         }

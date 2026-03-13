@@ -12,13 +12,14 @@ randl is powered by a federated network of static-hosted repos. Anyone can host 
 
 Here is how to add a repository:
 ```bash
-randl repository add <URL>
+randl repository add <NAME> <URL>
 ```
+
 The first repository in this project is: [https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/randl-repo.txt](https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/randl-repo.txt)
 
 And to remove a repository:
 ```bash
-randl repository remove <URL>
+randl repository remove <NAME>
 ```
 Here is how to list all available repositories in your configuration:
 ```bash
@@ -30,7 +31,12 @@ Before you can pull, You need to synchronize the repository using:
 ```bash
 randl repository sync
 ```
-You could also run `randl repo` instead of `randl repository` as a shortcut.
+You could also synchronize a selected repository by:
+```bash
+randl repository sync <NAME>
+```
+
+And also run `randl repo` instead of `randl repository` as a shortcut.
 
 Here is how to pull from a repository:
 
@@ -42,6 +48,10 @@ The pull subcommand have a flag called `max-depth` which will set the maximum de
 If you want to set on what directory the reward should be downloaded, You can use the `output-directory` flag.
 
 And if you do not want to download it, You can use the `dry-run` flag.
+
+The `pull` subcommand also have the `from` flag that will pull from a specific url without adding it, You can add download timeout by using the `timeout` flag and if you want to pull repeatedly you can use `repeat` flag followed by the number of how much you want to repeat instead of running randl repeatedly.
+
+The `no-confirm` flag in `pull` subcommand is used to skip all confirmation dialogs during pulling.
 
 ### Migrating from RTD
 This project was previously known as RTD. To migrate, update your binary name from `rtd` to `randl`. Your existing repos list at `~/.config/rtd/` will need to be moved to `~/.config/randl/`.
