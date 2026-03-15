@@ -1,15 +1,16 @@
 // src/commands/repository.rs
 use crate::cli::RepositoryAction;
-use crate::config::{get_config_file, get_sync_dir, get_toml_config};
+use crate::config::{create_agent, get_config_file, get_sync_dir, get_toml_config};
 use std::fs::{remove_file, write};
+use ureq::Agent;
 
 pub fn run(action: RepositoryAction) -> Result<(), Box<dyn std::error::Error>> {
     match action {
         RepositoryAction::Add { name, url } => add(name, url),
         RepositoryAction::Remove { name, keep_cache } => remove(name, keep_cache),
         RepositoryAction::List => list(),
-        RepositoryAction::Sync { name } => sync(name),
-        RepositoryAction::Check => check(),
+        RepositoryAction::Sync { name, timeout } => sync(name, timeout),
+        RepositoryAction::Check { timeout } => check(timeout),
     }
 }
 
@@ -110,31 +111,22 @@ fn list() -> Result<(), Box<dyn std::error::Error>> {
     to the synchronization directory (sync/ directory in
     the config directory) under the name of the repository.
 */
-fn sync_repo(name: String, url: String) -> Result<(), Box<dyn std::error::Error>> {
+fn sync_repo(name: String, url: String, agent: Agent) -> Result<(), Box<dyn std::error::Error>> {
     println!("Syncing {}...", name);
-    let content = match reqwest::blocking::get(&url) {
-        Ok(response) => match response.error_for_status() {
-            Ok(r) => match r.text() {
-                Ok(text) => text,
-                Err(e) => {
-                    eprintln!(" Failed to read response from {}: {}.", url, e.to_string());
-                    return Err("Failed to read response".into());
-                }
-            },
+    let content = match agent.get(&url).call() {
+        Ok(r) => match r.into_body().read_to_string() {
+            Ok(text) => text,
             Err(e) => {
-                eprintln!(" Failed to fetch {}: {}.", url, e.to_string());
-                return Err("Failed to fetch".into());
+                eprintln!(" Failed to read response from {}: {}.", url, e);
+                return Err("Failed to read response".into());
             }
         },
         Err(e) => {
-            eprintln!(" Failed to fetch {}: {}.", url, e.to_string());
+            eprintln!(" Failed to fetch {}: {}.", url, e);
             return Err("Failed to fetch".into());
         }
     };
-
-    let dest = get_sync_dir().join(name);
-
-    write(dest, content)?;
+    write(get_sync_dir().join(name), content)?;
     Ok(())
 }
 
@@ -145,11 +137,12 @@ fn sync_repo(name: String, url: String) -> Result<(), Box<dyn std::error::Error>
     It will iterate all repository (or only selected one) and will
     synchronize it using the sync_repo(name, url) function
 */
-fn sync(names: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+fn sync(names: Vec<String>, timeout: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
     let mut success = 0;
     let mut error = 0;
     let config = get_toml_config();
     let repos = config["repositories"].as_table().unwrap();
+    let agent: Agent = create_agent(timeout);
 
     for (name, val) in repos {
         if !val["enabled"].as_bool().unwrap() {
@@ -160,7 +153,7 @@ fn sync(names: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
         let url = val["url"].as_str().unwrap().to_string();
-        match sync_repo(name.clone(), url) {
+        match sync_repo(name.clone(), url, agent.clone()) {
             Ok(_) => success += 1,
             Err(_) => error += 1,
         }
@@ -169,36 +162,37 @@ fn sync(names: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// function handler for command check
-fn check() -> Result<(), Box<dyn std::error::Error>> {
+/*
+    function handler for subcommand check
+    parameters:
+        - timeout: timeout to check in seconds
+    it will iterate all repositories and then check
+    if it is alive or dead
+*/
+fn check(timeout: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
     let doc: toml::Value = get_toml_config();
-
     let mut alive = 0;
     let mut dead = 0;
+    let agent = create_agent(timeout);
+
     for (name, data) in doc["repositories"].as_table().unwrap() {
         if !data["enabled"].as_bool().unwrap() {
             continue;
         }
         let url = data["url"].as_str().unwrap().to_string();
         println!("Checking: {}", name);
-        match reqwest::blocking::Client::new().head(&url).send() {
-            Ok(response) => match response.error_for_status() {
-                Ok(_) => {
-                    println!("  Alive");
-                    alive += 1;
-                }
-                Err(e) => {
-                    eprintln!("  Dead: {}", e);
-                    dead += 1;
-                }
-            },
+        match agent.get(&url).call() {
+            Ok(_) => {
+                println!("  Alive");
+                alive += 1;
+            }
             Err(e) => {
-                eprintln!("  Unreachable: {}", e);
+                eprintln!("  Dead: {}", e);
                 dead += 1;
             }
         }
-        println!(" Repository okay.");
     }
+
     println!("Checking done:\n Alive: {}\n Dead: {}", alive, dead);
     Ok(())
 }

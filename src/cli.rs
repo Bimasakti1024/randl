@@ -80,10 +80,21 @@ pub enum RepositoryAction {
     List,
 
     /// Synchronize a repository (all repository by default)
-    Sync { name: Vec<String> },
+    Sync {
+        /// Names of the repository to sync (targetted)
+        name: Vec<String>,
+
+        /// Timeout
+        #[arg(short, long)]
+        timeout: Option<u64>,
+    },
 
     /// Check dead repository
-    Check,
+    Check {
+        /// Timeout
+        #[arg(short, long)]
+        timeout: Option<u64>,
+    },
 }
 
 #[cfg(test)]
@@ -92,13 +103,44 @@ mod test {
     use clap::Parser;
 
     #[test]
-    fn test_pull_defaults() {
+    fn test_pull_default() {
         let cli = Cli::parse_from(["randl", "pull"]);
         match cli.command {
             Commands::Pull(args) => {
                 assert!(!args.dry_run);
                 assert!(!args.no_confirm);
                 assert!(args.repeat.is_none());
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn test_pull_with_flags() {
+        let cli = Cli::parse_from([
+            "randl",
+            "pull",
+            "--dry-run",
+            "--no-confirm",
+            "--repeat",
+            "3",
+        ]);
+        match cli.command {
+            Commands::Pull(args) => {
+                assert!(args.dry_run);
+                assert!(args.no_confirm);
+                assert_eq!(args.repeat, Some(3));
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn test_pull_from_flag() {
+        let cli = Cli::parse_from(["randl", "pull", "--from", "https://example.com"]);
+        match cli.command {
+            Commands::Pull(args) => {
+                assert_eq!(args.from, Some("https://example.com".to_string()));
             }
             _ => panic!("wrong command"),
         }
@@ -120,13 +162,102 @@ mod test {
     }
 
     #[test]
-    fn test_repo_targetted_sync() {
-        let cli = Cli::parse_from(["randl", "repo", "sync", "repo1", "repo2"]);
+    fn test_repo_sync() {
+        let cli = Cli::parse_from(["randl", "repo", "sync", "--timeout", "1"]);
         match cli.command {
             Commands::Repository { action } => match action {
-                RepositoryAction::Sync { name } => {
+                RepositoryAction::Sync { name, timeout } => {
+                    assert!(name.is_empty());
+                    assert_eq!(timeout, Some(1));
+                }
+                _ => panic!("wrong action"),
+            },
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn test_repo_sync_no_timeout() {
+        let cli = Cli::parse_from(["randl", "repo", "sync"]);
+        match cli.command {
+            Commands::Repository { action } => match action {
+                RepositoryAction::Sync { name, timeout } => {
+                    assert_eq!(name.is_empty(), true);
+                    assert_eq!(timeout, None);
+                }
+                _ => panic!("wrong action"),
+            },
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn test_repo_targetted_sync() {
+        let cli = Cli::parse_from(["randl", "repo", "sync", "repo1", "repo2", "--timeout", "10"]);
+        match cli.command {
+            Commands::Repository { action } => match action {
+                RepositoryAction::Sync { name, timeout } => {
                     assert_eq!(name[0], "repo1");
                     assert_eq!(name[1], "repo2");
+                    assert_eq!(timeout, Some(10));
+                }
+                _ => panic!("wrong action"),
+            },
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn test_repo_remove_keep_cache() {
+        let cli = Cli::parse_from(["randl", "repo", "remove", "test", "--keep-cache"]);
+        match cli.command {
+            Commands::Repository { action } => match action {
+                RepositoryAction::Remove { name, keep_cache } => {
+                    assert_eq!(name, "test");
+                    assert_eq!(keep_cache, true);
+                }
+                _ => panic!("wrong action"),
+            },
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn test_repo_remove() {
+        let cli = Cli::parse_from(["randl", "repo", "remove", "test"]);
+        match cli.command {
+            Commands::Repository { action } => match action {
+                RepositoryAction::Remove { name, keep_cache } => {
+                    assert_eq!(name, "test");
+                    assert_eq!(keep_cache, false);
+                }
+                _ => panic!("wrong action"),
+            },
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn test_repo_check_timeout() {
+        let cli = Cli::parse_from(["randl", "repo", "check", "--timeout", "1"]);
+        match cli.command {
+            Commands::Repository { action } => match action {
+                RepositoryAction::Check { timeout } => {
+                    assert_eq!(timeout, Some(1));
+                }
+                _ => panic!("wrong action"),
+            },
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn test_repo_check_no_timeout() {
+        let cli = Cli::parse_from(["randl", "repo", "check"]);
+        match cli.command {
+            Commands::Repository { action } => match action {
+                RepositoryAction::Check { timeout } => {
+                    assert_eq!(timeout, None);
                 }
                 _ => panic!("wrong action"),
             },

@@ -1,6 +1,6 @@
 [package]
 name = "randl"
-version = "1.0.0-alpha.2"
+version = "1.0.0-alpha.3"
 authors = ["Bimasakti"]
 description = "A gacha-style random file downloader powered by a federated network of static-hosted repositories."
 edition = "2024"
@@ -21,13 +21,10 @@ clap = { version = "4", features = ["derive"] }
 dirs = "6.0.0"
 figment = { version = "0.10", features = ["toml"] }
 rand = "0.10.0"
-reqwest = { version = "0.13.2", default-features = false, features = [
-  "blocking",
-  "rustls"
-] }
 serde = { version = "1", features = ["derive"] }
 size = "0.5.0"
 toml = "1.0.6"
+ureq = "3.2.0"
 
 [profile.release]
 opt-level = "z"

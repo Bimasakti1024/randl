@@ -1,5 +1,6 @@
-# RANDL
+<img src="assets/logo.svg" align="right" alt="randl logo" width=100>
 
+# RANDL
 
 Random Downloader
 

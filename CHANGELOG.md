@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0-alpha.3] - 2026-03-15
+### Changed
+- switched from `reqwest` to `ureq` for lighter and faster HTTP requests
+
+### Performance
+- sync speed improved by ~3x
+
+### Added
+- unit test for create_agent
+- a few more CLI argument parsing
+- unit test for configuration deserialization
+
 ## [1.0.0-alpha.2] - 2026-03-14
 ### Added
 - unit tests for CLI argument parsing
