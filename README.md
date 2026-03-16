@@ -2,7 +2,7 @@
 
 # RANDL
 
-Random Downloader
+*The internet is the reward pool*
 
 A simple CLI to download random things from a repository.
 
@@ -48,9 +48,26 @@ The pull subcommand have a flag called `max-depth` which will set the maximum de
 
 If you want to set on what directory the reward should be downloaded, You can use the `output-directory` flag.
 
+So for example if you want to save it to  `~/Downloads`:
+```bash
+randl pull --output-directory ~/Downloads
+```
+
 And if you do not want to download it, You can use the `dry-run` flag.
 
 The `pull` subcommand also have the `from` flag that will pull from a specific url without adding it, You can add download timeout by using the `timeout` flag and if you want to pull repeatedly you can use `repeat` flag followed by the number of how much you want to repeat instead of running randl repeatedly.
+
+For example if you want to pull 3 times without downloading you can run:
+
+```bash
+randl pull --repeat 3 --dry-run
+```
+
+And if you want to do it from a repository that you did not want to add:
+
+```bash
+randl pull --repeat 3 --dry-run --from <URL>
+```
 
 The `no-confirm` flag in `pull` subcommand is used to skip all confirmation dialogs during pulling.
 
@@ -58,6 +75,24 @@ The `no-confirm` flag in `pull` subcommand is used to skip all confirmation dial
 This project was previously known as RTD. To migrate, update your binary name from `rtd` to `randl`. Your existing repos list at `~/.config/rtd/` will need to be moved to `~/.config/randl/`.
 
 I did not know there were other CLI tools called RTD, To avoid conflict, I decided to rename it to randl.
+
+## Configuration
+
+randl stores its configuration at `~/.config/randl/config.toml`, which is automatically created on first run.
+
+All keys in the `config.toml` file serve as default configuration which can be overridden by using flags.
+
+For example if the `max_depth` key value is 3, you can temporarily modify it without touching the `config.toml` file by using the `max-depth` flag.
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `max_depth` | `3` | Maximum depth for nested repository following |
+| `output_directory` | `.` | Directory where rewards are saved |
+| `repeat` | `1` | How many times to pull |
+| `timeout` | `30` | HTTP timeout in seconds |
+| `no_confirm` | `false` | Skip all confirmation dialogs |
+| `dry_run` | `false` | Preview reward without downloading |
+| `keep_cache` | `false` | Keep sync cache when removing a repository |
 
 ## How it works
 
@@ -68,32 +103,32 @@ Add a repository URL and sync it locally. This downloads the repo index to your 
 randl picks a random repository from your local index, then picks a random line from it.
 
 3. Reward or nested?
-- If the line is a URL → you get that file as your reward.
+- If the line is a URL, you get that file as your reward.
 - If the line starts with `Nested`, randl fetches that repo and picks a random line from it, repeating until it hits a reward.
 
 ## Creating your own repository
 
-Creating your own repository is really simple, You just need:
+Creating your own repository is really simple. You just need:
 
 1. An internet connection.
-
-2. A working http or https server.
-
+2. Somewhere to host a raw text file: GitHub Gist, Pastebin, GitHub Pages, or any HTTP server.
 3. A text editor.
 
-
-What you need to do is to run the http/https server and create a text file that are accessible through the http/https server. Here is an example of the repository:
-
+Create a text file with one URL per line. Here is an example:
 ```
 # This is a reward
 https://pastebin.com/raw/sqg8Ay0d
-# If you want to make a nested repository
-# that links your repository with others,
-# you can use the Nested tag, like this:
-Nested https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/37589e33d1547038c4c69e4c9fd796644c73071b/randl-repo.txt
+# If you want to link to another repository, use the Nested tag:
+Nested https://gist.githubusercontent.com/...
 ```
+
+Some free options to host your repository:
+
+- [GitHub Gist](https://gist.github.com): easy and version controlled
+- [Pastebin](https://pastebin.com): simple, no account needed (you need an account if you want to edit)
+- [GitHub Pages](https://pages.github.com): best for larger repos, free with a GitHub account
+- [0x0.st](https://0x0.st): temporary, can save up to a year
 
 ## License
 
 This project is licensed under the MIT License.
-

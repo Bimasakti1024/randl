@@ -4,7 +4,8 @@ use clap::{Args, Parser, Subcommand};
 #[derive(Parser)]
 #[command(
     name = "randl",
-    about = "Random Downloader powered by a federated network of static-hosted repositories."
+    about = "Random Downloader powered by a federated network of static-hosted repositories.",
+    version
 )]
 pub struct Cli {
     #[command(subcommand)]
