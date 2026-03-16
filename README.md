@@ -80,7 +80,7 @@ I did not know there were other CLI tools called RTD, To avoid conflict, I decid
 
 randl stores its configuration at `~/.config/randl/config.toml`, which is automatically created on first run.
 
-All keys in the `config.toml` file are use to be a default configuration which can be overridden by using flags.
+All keys in the `config.toml` file serve as default configuration which can be overridden by using flags.
 
 For example if the `max_depth` key value is 3, you can temporarily modify it without touching the `config.toml` file by using the `max-depth` flag.
 
@@ -103,32 +103,32 @@ Add a repository URL and sync it locally. This downloads the repo index to your 
 randl picks a random repository from your local index, then picks a random line from it.
 
 3. Reward or nested?
-- If the line is a URL → you get that file as your reward.
+- If the line is a URL, you get that file as your reward.
 - If the line starts with `Nested`, randl fetches that repo and picks a random line from it, repeating until it hits a reward.
 
 ## Creating your own repository
 
-Creating your own repository is really simple, You just need:
+Creating your own repository is really simple. You just need:
 
 1. An internet connection.
-
-2. A working http or https server.
-
+2. Somewhere to host a raw text file: GitHub Gist, Pastebin, GitHub Pages, or any HTTP server.
 3. A text editor.
 
-
-What you need to do is to run the http/https server and create a text file that are accessible through the http/https server. Here is an example of the repository:
-
+Create a text file with one URL per line. Here is an example:
 ```
 # This is a reward
 https://pastebin.com/raw/sqg8Ay0d
-# If you want to make a nested repository
-# that links your repository with others,
-# you can use the Nested tag, like this:
-Nested https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/37589e33d1547038c4c69e4c9fd796644c73071b/randl-repo.txt
+# If you want to link to another repository, use the Nested tag:
+Nested https://gist.githubusercontent.com/...
 ```
+
+Some free options to host your repository:
+
+- [GitHub Gist](https://gist.github.com): easy and version controlled
+- [Pastebin](https://pastebin.com): simple, no account needed (you need an account if you want to edit)
+- [GitHub Pages](https://pages.github.com): best for larger repos, free with a GitHub account
+- [0x0.st](https://0x0.st): temporary, can save up to a year
 
 ## License
 
 This project is licensed under the MIT License.
-
