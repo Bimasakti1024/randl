@@ -1,6 +1,6 @@
 [package]
 name = "randl"
-version = "1.0.0-beta.1"
+version = "1.0.0"
 authors = ["Bimasakti"]
 description = "A gacha-style random file downloader powered by a federated network of static-hosted repositories."
 edition = "2024"
