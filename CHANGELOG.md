@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2026-03-17
+### Added
+- installation section in README.md
+
 ## [1.0.0-beta.1] - 2026-03-15
 ### Added
 - tagline in README
