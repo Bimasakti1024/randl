@@ -8,21 +8,73 @@ A simple CLI to download random things from a repository.
 
 randl is powered by a federated network of static-hosted repos. Anyone can host one, anyone can link to others.
 
+## Installation
+ 
+### 1. Pre-built binary (recommended)
+ 
+The easiest way to install randl, no Rust compiler required.
+ 
+Head to the [Releases page](https://github.com/Bimasakti1024/randl/releases) and download the binary for your platform, or use the installer script:
+ 
+**Linux**
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Bimasakti1024/randl/releases/latest/download/randl-installer.sh | sh
+```
+ 
+**Windows (PowerShell)**
+```powershell
+irm https://github.com/Bimasakti1024/randl/releases/latest/download/randl-installer.ps1 | iex
+```
+ 
+---
+ 
+### 2. From crates.io
+ 
+> **Prerequisite:** Rust and Cargo, install from [rustup.rs](https://rustup.rs)
+ 
+```bash
+cargo install randl
+```
+ 
+---
+ 
+### 3. From source
+ 
+> **Prerequisite:** Rust and Cargo, install from [rustup.rs](https://rustup.rs)
+ 
+Clone the repository and build:
+ 
+```bash
+git clone https://github.com/Bimasakti1024/randl
+cd randl
+```
+ 
+Then either install directly:
+ 
+```bash
+cargo install --path .
+```
+ 
+Or build the release binary (output at `target/release/randl`):
+ 
+```bash
+cargo build --release
+```
 
 ## Quickstart
 
-Here is how to add a repository:
+Add a repository:
 ```bash
 randl repository add <NAME> <URL>
 ```
 
 The first repository in this project is: [https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/randl-repo.txt](https://gist.githubusercontent.com/Bimasakti1024/c05d38ef8b93b8fd7dfb861977dd48e7/raw/randl-repo.txt)
 
-And to remove a repository:
+Remove a repository:
 ```bash
 randl repository remove <NAME>
 ```
-Here is how to list all available repositories in your configuration:
+List all available repositories in your configuration:
 ```bash
 randl repository list
 ```
@@ -32,7 +84,7 @@ Before you can pull, You need to synchronize the repository using:
 ```bash
 randl repository sync
 ```
-You could also synchronize a selected repository by:
+You can also synchronize a selected repository by:
 ```bash
 randl repository sync <NAME>
 ```
@@ -44,9 +96,9 @@ Here is how to pull from a repository:
 ```bash
 randl pull
 ```
-The pull subcommand have a flag called `max-depth` which will set the maximum depth for a nested repository.
+The pull subcommand has a flag called `max-depth` which will set the maximum depth for a nested repository.
 
-If you want to set on what directory the reward should be downloaded, You can use the `output-directory` flag.
+If you want to set on where the reward should be downloaded, You can use the `output-directory` flag.
 
 So for example if you want to save it to  `~/Downloads`:
 ```bash
