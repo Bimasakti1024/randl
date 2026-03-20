@@ -54,6 +54,10 @@ pub struct PullArgs {
     /// Pull from a repository without adding
     #[arg(short, long)]
     pub from: Option<String>,
+
+    /// Scan reward url
+    #[arg(short, long, default_value_t = false)]
+    pub scan_reward_url: bool,
 }
 
 #[derive(Subcommand)]
