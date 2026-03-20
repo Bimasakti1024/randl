@@ -136,15 +136,17 @@ All keys in the `config.toml` file serve as default configuration which can be o
 
 For example if the `max_depth` key value is 3, you can temporarily modify it without touching the `config.toml` file by using the `max-depth` flag.
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `max_depth` | `3` | Maximum depth for nested repository following |
-| `output_directory` | `.` | Directory where rewards are saved |
-| `repeat` | `1` | How many times to pull |
-| `timeout` | `30` | HTTP timeout in seconds |
-| `no_confirm` | `false` | Skip all confirmation dialogs |
-| `dry_run` | `false` | Preview reward without downloading |
-| `keep_cache` | `false` | Keep sync cache when removing a repository |
+| Key                | Default | Description                                   |
+| --------------------| ---------| -----------------------------------------------|
+| `max_depth`        | `3`     | Maximum depth for nested repository following |
+| `output_directory` | `.`     | Directory where rewards are saved             |
+| `repeat`           | `1`     | How many times to pull                        |
+| `timeout`          | `30`    | HTTP timeout in seconds                       |
+| `no_confirm`       | `false` | Skip all confirmation dialogs                 |
+| `dry_run`          | `false` | Preview reward without downloading            |
+| `keep_cache`       | `false` | Keep sync cache when removing a repository    |
+| `scan_reward_url`  | `false` | Scan reward before downloading                |
+| `vt_api_key`       |         | VirusTotal API Key for reward scanning        |
 
 ## How it works
 

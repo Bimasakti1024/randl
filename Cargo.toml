@@ -1,6 +1,6 @@
 [package]
 name = "randl"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Bimasakti"]
 description = "A gacha-style random file downloader powered by a federated network of static-hosted repositories."
 edition = "2024"
@@ -25,6 +25,7 @@ figment = { version = "0.10", features = ["toml"] }
 rand = "0.10.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.149"
+serde_with = "3.17.0"
 size = "0.5.0"
 toml = "1.0.6"
 ureq = { version = "3.2.0", features = ["json"] }

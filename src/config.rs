@@ -15,6 +15,7 @@ timeout = 30
 no_confirm = false
 dry_run = false
 keep_cache = false
+scan_reward_url = false
 
 [repositories]
 "#;
@@ -34,6 +35,8 @@ pub struct Configuration {
     pub no_confirm: bool,
     pub dry_run: bool,
     pub keep_cache: bool,
+    pub scan_reward_url: bool,
+    pub vt_api_key: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

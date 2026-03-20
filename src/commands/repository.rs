@@ -36,7 +36,7 @@ fn add(name: String, url: String) -> Result<(), Box<dyn std::error::Error>> {
         .unwrap()
         .insert(name, toml::Value::Table(repo));
 
-    write(&get_config_file(), toml::to_string(&doc)?)?;
+    write(get_config_file(), toml::to_string(&doc)?)?;
     Ok(())
 }
 
@@ -80,7 +80,7 @@ fn remove(name: String, keep_cache: bool) -> Result<(), Box<dyn std::error::Erro
         eprintln!("Repository {} does not exist.", name);
     }
 
-    write(&get_config_file(), toml::to_string(&doc)?)?;
+    write(get_config_file(), toml::to_string(&doc)?)?;
     Ok(())
 }
 
@@ -94,8 +94,8 @@ fn list() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, val) in doc["repositories"].as_table().unwrap() {
         println!("{}:", name);
-        println!("  url: {}", val["url"].as_str().unwrap().to_string());
-        println!("  enabled: {}", val["enabled"].to_string())
+        println!("  url: {}", val["url"].as_str().unwrap());
+        println!("  enabled: {}", val["enabled"])
     }
 
     Ok(())

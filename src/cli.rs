@@ -1,5 +1,7 @@
 // src/cli.rs
 use clap::{Args, Parser, Subcommand};
+use serde::Serialize;
+use serde_with::skip_serializing_none;
 
 #[derive(Parser)]
 #[command(
@@ -25,6 +27,7 @@ pub enum Commands {
     },
 }
 
+#[skip_serializing_none]
 #[derive(Args, serde::Serialize)]
 pub struct PullArgs {
     /// Maximum depth for nested repository
@@ -36,8 +39,8 @@ pub struct PullArgs {
     pub output_directory: Option<std::path::PathBuf>,
 
     /// Toggle dry run
-    #[arg(short, long, default_value_t = false)]
-    pub dry_run: bool,
+    #[arg(short, long, action = clap::ArgAction::SetTrue)]
+    pub dry_run: Option<bool>,
 
     /// Toggle confirmation before downloading
     #[arg(short, long, default_value_t = false)]
@@ -102,6 +105,11 @@ pub enum RepositoryAction {
     },
 }
 
+#[derive(Serialize)]
+pub struct ConfigOverride<T: Serialize> {
+    pub configuration: T,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -112,7 +120,7 @@ mod test {
         let cli = Cli::parse_from(["randl", "pull"]);
         match cli.command {
             Commands::Pull(args) => {
-                assert!(!args.dry_run);
+                assert!(!args.dry_run.unwrap());
                 assert!(!args.no_confirm);
                 assert!(args.repeat.is_none());
             }
@@ -132,7 +140,7 @@ mod test {
         ]);
         match cli.command {
             Commands::Pull(args) => {
-                assert!(args.dry_run);
+                assert!(args.dry_run.unwrap());
                 assert!(args.no_confirm);
                 assert_eq!(args.repeat, Some(3));
             }

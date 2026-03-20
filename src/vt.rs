@@ -1,6 +1,14 @@
 // src/vt.rs
 use ureq::Agent;
 
+pub struct vt_report {
+    pub url: String,
+    pub harmless: u32,
+    pub undetected: u32,
+    pub suspicious: u32,
+    pub malicious: u32,
+}
+
 /*
     A function helper to check URL Safety
     using VirusTotal API.
@@ -8,12 +16,13 @@ use ureq::Agent;
         - Agent: Agent to use for requesting
         - vt_api_key: The API key
         - url: The URL to scan
+    return a vt_report
 */
 pub fn scan_url(
     agent: &Agent,
     vt_api_key: &str,
     url: &str,
-) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+) -> Result<vt_report, Box<dyn std::error::Error>> {
     // POST to submit URL for scanning
     let mut scan_response = agent
         .post("https://www.virustotal.com/api/v3/urls")
@@ -36,5 +45,17 @@ pub fn scan_url(
         .call()?;
 
     let report_json: serde_json::Value = report_response.body_mut().read_json()?;
-    Ok(report_json)
+
+    let stats = &report_json["data"]["attributes"]["stats"];
+
+    Ok(vt_report {
+        url: report_json["data"]["attributes"]["url"]
+            .as_str()
+            .ok_or("missing url")?
+            .to_string(),
+        harmless: stats["harmless"].as_u64().ok_or("missing harmless")? as u32,
+        undetected: stats["undetected"].as_u64().ok_or("missing undetected")? as u32,
+        suspicious: stats["suspicious"].as_u64().ok_or("missing suspicious")? as u32,
+        malicious: stats["malicious"].as_u64().ok_or("missing malicious")? as u32,
+    })
 }

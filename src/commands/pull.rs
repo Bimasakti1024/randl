@@ -12,8 +12,9 @@ use std::io::{self, Read, Write};
 use std::path::Path;
 use ureq::Agent;
 
-use crate::cli::PullArgs;
+use crate::cli::{ConfigOverride, PullArgs};
 use crate::config::{Config, create_agent, get_config_file, get_sync_dir};
+use crate::vt::{scan_url, vt_report};
 
 enum FollowResult {
     Done,
@@ -24,7 +25,9 @@ enum FollowResult {
 pub fn run(args: PullArgs) -> Result<(), Box<dyn std::error::Error>> {
     let config: Config = Figment::new()
         .merge(Toml::file(get_config_file()))
-        .merge(Serialized::defaults(&args))
+        .merge(Serialized::globals(&ConfigOverride {
+            configuration: &args,
+        }))
         .extract()?;
     let conf_ref = &config.configuration;
     let agent = create_agent(Some(conf_ref.timeout));
@@ -40,7 +43,7 @@ pub fn run(args: PullArgs) -> Result<(), Box<dyn std::error::Error>> {
                     FollowResult::Done => break,
                     FollowResult::Retry => continue,
                     FollowResult::Error(e) => {
-                        eprintln!("{}", e.to_string());
+                        eprintln!("{}", e);
                         if conf_ref.no_confirm {
                             continue;
                         }
@@ -89,7 +92,7 @@ pub fn run(args: PullArgs) -> Result<(), Box<dyn std::error::Error>> {
                 FollowResult::Done => break,
                 FollowResult::Retry => continue,
                 FollowResult::Error(e) => {
-                    println!("{}", e.to_string());
+                    println!("{}", e);
                     if conf_ref.no_confirm {
                         continue;
                     }
@@ -131,6 +134,37 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
         [url] => {
             // Attempt download if not dry run
             println!("Reward: {}.", filename_from_url(url));
+            if conf_ref.scan_reward_url {
+                let Some(vt_api_key) = conf_ref.vt_api_key.as_deref() else {
+                    eprintln!("scan_reward_url is enabled but vt_api_key is not set.");
+                    return FollowResult::Retry;
+                };
+                let reward_check = scan_url(&agent, vt_api_key, url);
+
+                match reward_check {
+                    Ok(report) => {
+                        println!("VirusTotal Check report:");
+                        println!("  Malicious: {}", report.malicious);
+                        println!("  Suspicious: {}", report.suspicious);
+                        println!("  Undetected: {}", report.undetected);
+                        println!("  Harmless: {}", report.harmless);
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                    }
+                }
+                match Confirm::new("Download?").prompt() {
+                    Ok(answer) => {
+                        if !answer {
+                            return FollowResult::Done;
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        return FollowResult::Retry;
+                    }
+                }
+            }
             if conf_ref.dry_run {
                 println!("Reward is not downloaded because it is a dry run.");
                 FollowResult::Done
