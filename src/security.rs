@@ -1,4 +1,6 @@
-// src/vt.rs
+// src/security.rs
+use sha2::{Digest, Sha256};
+use std::{fs, io};
 use ureq::Agent;
 
 pub struct vt_report {
@@ -58,4 +60,15 @@ pub fn scan_url(
         suspicious: stats["suspicious"].as_u64().ok_or("missing suspicious")? as u32,
         malicious: stats["malicious"].as_u64().ok_or("missing malicious")? as u32,
     })
+}
+
+pub fn get_file_hash(path: &str) -> io::Result<String> {
+    let mut file = fs::File::open(path)?;
+    let mut hasher = Sha256::new();
+
+    // Stream the file content into the hasher
+    io::copy(&mut file, &mut hasher)?;
+
+    let hash = hasher.finalize();
+    Ok(format!("{:x}", hash))
 }
