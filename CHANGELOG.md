@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.1.0] - 2026
+## [1.1.0] - 2026-03-22
 ### Added
 - status, last sync time, entry data, hash (sha-256) and error checking for check subcommand in repository command
 - enable and disable subcommands for repository command to directly enable or disable a repository without editing the configuration file
