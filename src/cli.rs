@@ -103,6 +103,18 @@ pub enum RepositoryAction {
         #[arg(short, long)]
         timeout: Option<u64>,
     },
+
+    /// Enable a repository
+    Enable {
+        /// Name of the repository
+        name: String,
+    },
+
+    /// Disable a repository
+    Disable {
+        /// Name of the repository
+        name: String,
+    },
 }
 
 #[derive(Serialize)]

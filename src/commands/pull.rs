@@ -13,8 +13,9 @@ use std::path::Path;
 use ureq::Agent;
 
 use crate::cli::{ConfigOverride, PullArgs};
+use crate::commands::repository::{Repository, RepositoryType, parse_repository};
 use crate::config::{Config, create_agent, get_config_file, get_sync_dir};
-use crate::vt::{scan_url, vt_report};
+use crate::security::scan_url;
 
 enum FollowResult {
     Done,
@@ -130,8 +131,11 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
         None => return FollowResult::Error("Repository has no lines.".into()),
     };
 
-    match line.splitn(2, ' ').collect::<Vec<_>>().as_slice() {
-        [url] => {
+    let repo: Repository = parse_repository(line.to_owned());
+    let url_string = repo.url.unwrap();
+    let url = url_string.as_str();
+    match repo.repo_type {
+        RepositoryType::Reward => {
             // Attempt download if not dry run
             println!("Reward: {}.", filename_from_url(url));
             if conf_ref.scan_reward_url {
@@ -139,7 +143,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                     eprintln!("scan_reward_url is enabled but vt_api_key is not set.");
                     return FollowResult::Retry;
                 };
-                let reward_check = scan_url(&agent, vt_api_key, url);
+                let reward_check = scan_url(&agent, vt_api_key, &url);
 
                 match reward_check {
                     Ok(report) => {
@@ -156,7 +160,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                 match Confirm::new("Download?").prompt() {
                     Ok(answer) => {
                         if !answer {
-                            return FollowResult::Done;
+                            return FollowResult::Retry;
                         }
                     }
                     Err(e) => {
@@ -170,7 +174,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                 FollowResult::Done
             } else {
                 match download(
-                    url,
+                    &url,
                     agent,
                     conf_ref.output_directory.as_path(),
                     conf_ref.no_confirm,
@@ -189,7 +193,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                 }
             }
         }
-        ["Nested", url] => {
+        RepositoryType::Nested => {
             // Fetch nested repo and recurse
             match fetch_lines(agent, url) {
                 Ok(nested) => follow(&nested, agent, config, current_depth + 1),

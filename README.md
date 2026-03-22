@@ -137,7 +137,7 @@ All keys in the `config.toml` file serve as default configuration which can be o
 For example if the `max_depth` key value is 3, you can temporarily modify it without touching the `config.toml` file by using the `max-depth` flag.
 
 | Key                | Default | Description                                   |
-| --------------------| ---------| -----------------------------------------------|
+| -------------------| ---------| -----------------------------------------------|
 | `max_depth`        | `3`     | Maximum depth for nested repository following |
 | `output_directory` | `.`     | Directory where rewards are saved             |
 | `repeat`           | `1`     | How many times to pull                        |

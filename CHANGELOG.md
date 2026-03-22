@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026
+### Added
+- status, last sync time, entry data, hash (sha-256) and error checking for check subcommand in repository command
+- enable and disable subcommands for repository command to directly enable or disable a repository without editing the configuration file
+
+### Security
+- optional reward checking using VirusTotal API
+
+### Fixed
+- configuration overriding using argument
+
+### Changed
+- renamed `src/vt.rs` to `src/security.rs`
+
 ## [1.0.0] - 2026-03-17
 ### Added
 - installation section in README.md

@@ -2,7 +2,7 @@
 mod cli;
 mod commands;
 mod config;
-mod vt;
+mod security;
 
 use crate::{
     cli::{Cli, Commands},
