@@ -84,38 +84,11 @@ pub fn get_sync_dir() -> PathBuf {
     dir
 }
 
-pub fn create_agent(t: Option<u64>) -> Agent {
-    let timeout = t.unwrap_or_else(|| {
-        get_toml_config()
-            .as_table()
-            .and_then(|doc| doc["configuration"].as_table())
-            .and_then(|conf| conf["timeout"].as_integer())
-            .unwrap_or(30)
-            .try_into()
-            .unwrap_or(30)
-    });
-
-    Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(timeout)))
-        .build()
-        .into()
-}
-
 #[cfg(test)]
 mod test {
     use std::path::PathBuf;
 
-    use crate::config::{Config, DEFAULT_CONFIG, create_agent};
-
-    #[test]
-    fn create_agent_with_timeout() {
-        create_agent(Some(1));
-    }
-
-    #[test]
-    fn create_agent_without_timeout() {
-        create_agent(None);
-    }
+    use crate::config::{Config, DEFAULT_CONFIG};
 
     #[test]
     fn test_default_config_parse() {

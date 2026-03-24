@@ -6,16 +6,15 @@ use figment::{
     providers::{Serialized, Toml},
 };
 use rand::prelude::*;
-use size::Size;
-use std::fs::{File, read_to_string};
-use std::io::{self, Read, Write};
-use std::path::Path;
+use std::fs::read_to_string;
 use ureq::Agent;
 
 use crate::cli::{ConfigOverride, PullArgs};
 use crate::commands::repository::{Repository, RepositoryType, parse_repository};
-use crate::config::{Config, create_agent, get_config_file, get_sync_dir};
+use crate::config::{Config, get_config_file, get_sync_dir};
+use crate::download::download_file;
 use crate::security::scan_url;
+use crate::util::{create_agent, filename_from_url};
 
 enum FollowResult {
     Done,
@@ -173,7 +172,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                 println!("Reward is not downloaded because it is a dry run.");
                 FollowResult::Done
             } else {
-                match download(
+                match download_file(
                     &url,
                     agent,
                     conf_ref.output_directory.as_path(),
@@ -215,85 +214,6 @@ fn fetch_lines(agent: &ureq::Agent, url: &str) -> Result<Vec<String>, Box<dyn st
         .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
         .map(|l| l.to_string())
         .collect())
-}
-
-fn filename_from_url(url: &str) -> String {
-    // Strip query parameters before extracting filename
-    let path = url.split('?').next().unwrap_or(url);
-    path.split('/')
-        .next_back()
-        .filter(|s| !s.is_empty())
-        .unwrap_or("randl-reward")
-        .to_string()
-}
-
-fn download(
-    url: &str,
-    agent: &Agent,
-    output_dir: &Path,
-    no_confirm: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let output_path = output_dir.join(filename_from_url(url));
-    let output_filename = output_path
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string();
-
-    // HEAD request to get file size
-    let head = agent.head(url).call()?;
-    let size: Option<u64> = head
-        .headers()
-        .get("content-length")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse().ok());
-
-    if !no_confirm {
-        match size {
-            Some(s) => println!(
-                "  File: {}\n  Size: {}",
-                output_filename,
-                Size::from_bytes(s)
-            ),
-            None => println!("  File: {}\n  Size: unknown", output_filename),
-        }
-
-        if !Confirm::new("Download this reward?").prompt()? {
-            return Err("cancelled".into());
-        }
-    }
-    let mut response = agent.get(url).call()?;
-    let mut file = File::create(&output_path)?;
-
-    println!("Downloading {}...", output_filename);
-
-    let mut buffer = [0u8; 8192];
-    let mut bytes_written: u64 = 0;
-    let mut last_reported = 0u64;
-
-    let mut reader = response.body_mut().as_reader();
-
-    loop {
-        let n = reader.read(&mut buffer)?;
-        if n == 0 {
-            break;
-        }
-        file.write_all(&buffer[..n])?;
-        bytes_written += n as u64;
-
-        // Print progress every ~512KB
-        if bytes_written - last_reported >= 524_288 {
-            match size {
-                Some(total) => print!("\r  {:.1}%", bytes_written as f64 / total as f64 * 100.0),
-                None => print!("\r  {}", Size::from_bytes(bytes_written)),
-            }
-            io::stdout().flush()?;
-            last_reported = bytes_written;
-        }
-    }
-
-    println!("\rSaved to {}", output_filename);
-    Ok(())
 }
 
 #[cfg(test)]

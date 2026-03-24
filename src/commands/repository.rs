@@ -1,7 +1,8 @@
 // src/commands/repository.rs
 use crate::cli::RepositoryAction;
-use crate::config::{create_agent, get_config_file, get_sync_dir, get_toml_config};
+use crate::config::{get_config_file, get_sync_dir, get_toml_config};
 use crate::security::get_file_hash;
+use crate::util::create_agent;
 use std::fs::{read_to_string, remove_file, write};
 use std::time::SystemTime;
 use ureq::Agent;

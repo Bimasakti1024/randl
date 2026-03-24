@@ -1,8 +1,11 @@
 // src/main.rs
+mod archive;
 mod cli;
 mod commands;
 mod config;
+mod download;
 mod security;
+mod util;
 
 use crate::{
     cli::{Cli, Commands},
