@@ -55,12 +55,11 @@ pub fn download_file(
 }
 
 pub fn get_download_size(agent: &Agent, url: &str) -> Option<u64> {
-    let head = agent.head(url).call().unwrap();
+    let head = agent.head(url).call().ok()?;
     let size: Option<u64> = head
         .headers()
         .get("content-length")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.parse().ok());
-
     size
 }
