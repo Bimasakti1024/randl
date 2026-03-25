@@ -157,17 +157,6 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                         eprintln!("Error: {}", e);
                     }
                 }
-                match Confirm::new("Download?").prompt() {
-                    Ok(answer) => {
-                        if !answer {
-                            return FollowResult::Retry;
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("Error: {}", e);
-                        return FollowResult::Retry;
-                    }
-                }
             }
             if conf_ref.dry_run {
                 println!("Reward is not downloaded because it is a dry run.");
@@ -196,8 +185,12 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                         return FollowResult::Retry;
                     }
                 }
+                println!("Downloading {}", output_filename);
                 match download_file(&url, agent, conf_ref.output_directory.as_path()) {
-                    Ok(_) => FollowResult::Done,
+                    Ok(_) => {
+                        println!("Download successful.");
+                        FollowResult::Done
+                    }
                     Err(e) => {
                         // Distinguish user cancellation from real errors
                         if e.to_string() == "cancelled" {
@@ -218,7 +211,10 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                 Err(e) => FollowResult::Error(e),
             }
         }
-        RepositoryType::Archive => FollowResult::Done,
+        RepositoryType::Archive => {
+            todo!();
+            FollowResult::Done
+        }
         _ => {
             // If line format in unrecognised, will retry
             eprintln!("Unrecognised line format, retrying...");
