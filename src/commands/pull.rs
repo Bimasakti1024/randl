@@ -6,13 +6,14 @@ use figment::{
     providers::{Serialized, Toml},
 };
 use rand::prelude::*;
+use size::Size;
 use std::fs::read_to_string;
 use ureq::Agent;
 
 use crate::cli::{ConfigOverride, PullArgs};
 use crate::commands::repository::{Repository, RepositoryType, parse_repository};
 use crate::config::{Config, get_config_file, get_sync_dir};
-use crate::download::download_file;
+use crate::download::{download_file, get_download_size};
 use crate::security::scan_url;
 use crate::util::{create_agent, filename_from_url};
 
@@ -172,12 +173,30 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                 println!("Reward is not downloaded because it is a dry run.");
                 FollowResult::Done
             } else {
-                match download_file(
-                    &url,
-                    agent,
-                    conf_ref.output_directory.as_path(),
-                    conf_ref.no_confirm,
-                ) {
+                let output_path = conf_ref.output_directory.join(filename_from_url(url));
+                let output_filename = output_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+
+                let size = get_download_size(&agent, url);
+
+                if !conf_ref.no_confirm {
+                    match size {
+                        Some(s) => println!(
+                            "  File: {}\n  Size: {}",
+                            output_filename,
+                            Size::from_bytes(s)
+                        ),
+                        None => println!("  File: {}\n  Size: unknown", output_filename),
+                    }
+
+                    if !Confirm::new("Download this reward?").prompt().unwrap() {
+                        return FollowResult::Retry;
+                    }
+                }
+                match download_file(&url, agent, conf_ref.output_directory.as_path()) {
                     Ok(_) => FollowResult::Done,
                     Err(e) => {
                         // Distinguish user cancellation from real errors
@@ -199,6 +218,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                 Err(e) => FollowResult::Error(e),
             }
         }
+        RepositoryType::Archive => FollowResult::Done,
         _ => {
             // If line format in unrecognised, will retry
             eprintln!("Unrecognised line format, retrying...");

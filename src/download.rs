@@ -1,52 +1,30 @@
 // src/download.rs
-use ::ureq::Agent;
-use asky::Confirm;
 use size::Size;
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::Path;
+use ureq::Agent;
 
 use crate::util::filename_from_url;
 
+/*
+    a function to download a file
+    parameters:
+        - url: the url to download
+        - agent: ureq agent to use
+        - output_dir: output directory
+*/
 pub fn download_file(
     url: &str,
     agent: &Agent,
     output_dir: &Path,
-    no_confirm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let output_path = output_dir.join(filename_from_url(url));
-    let output_filename = output_path
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string();
+    let output_path = output_dir.join(filename_from_url(&url));
 
     // HEAD request to get file size
-    let head = agent.head(url).call()?;
-    let size: Option<u64> = head
-        .headers()
-        .get("content-length")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse().ok());
-
-    if !no_confirm {
-        match size {
-            Some(s) => println!(
-                "  File: {}\n  Size: {}",
-                output_filename,
-                Size::from_bytes(s)
-            ),
-            None => println!("  File: {}\n  Size: unknown", output_filename),
-        }
-
-        if !Confirm::new("Download this reward?").prompt()? {
-            return Err("cancelled".into());
-        }
-    }
+    let size = get_download_size(&agent, url);
     let mut response = agent.get(url).call()?;
     let mut file = File::create(&output_path)?;
-
-    println!("Downloading {}...", output_filename);
 
     let mut buffer = [0u8; 8192];
     let mut bytes_written: u64 = 0;
@@ -73,6 +51,16 @@ pub fn download_file(
         }
     }
 
-    println!("\rSaved to {}", output_filename);
     Ok(())
+}
+
+pub fn get_download_size(agent: &Agent, url: &str) -> Option<u64> {
+    let head = agent.head(url).call().unwrap();
+    let size: Option<u64> = head
+        .headers()
+        .get("content-length")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse().ok());
+
+    size
 }
