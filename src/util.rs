@@ -19,19 +19,10 @@ pub fn filename_from_url(url: &str) -> String {
 }
 
 /*
-    a function to truncate a string with max length
+    a function to create a ureq agent
     parameters:
-        - s: the string to truncate
-        - max_len: max length (if 0 will not truncate)
+        - t: agent timeout (optional)
 */
-pub fn truncate_string(s: &str, max_len: usize) -> String {
-    if max_len == 0 || s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len])
-    }
-}
-
 pub fn create_agent(t: Option<u64>) -> Agent {
     let timeout = t.unwrap_or_else(|| {
         get_toml_config()
@@ -51,7 +42,7 @@ pub fn create_agent(t: Option<u64>) -> Agent {
 
 #[cfg(test)]
 mod test {
-    use crate::util::{create_agent, filename_from_url, truncate_string};
+    use crate::util::{create_agent, filename_from_url};
 
     #[test]
     fn filename_from_url_test() {
@@ -66,16 +57,6 @@ mod test {
     #[test]
     fn test_filename_from_url_no_path() {
         assert_eq!(filename_from_url("https://example.com"), "example.com");
-    }
-
-    #[test]
-    fn test_truncate_string() {
-        assert_eq!(truncate_string("Hello, World!", 5), "Hello...");
-    }
-
-    #[test]
-    fn test_truncate_string_zero() {
-        assert_eq!(truncate_string("Hello, World!", 0), "Hello, World!");
     }
 
     #[test]
