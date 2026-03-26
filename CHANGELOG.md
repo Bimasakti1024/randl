@@ -2,9 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.2.0] - 2026-03-26
 ### Added
-- Archive repository type that automatically extracts compressed rewards (GZ and XZ supported, Bzip2 WIP)
+- Archive repository type that automatically extracts compressed rewards (GZ, XZ, Bzip2, and Zstd supported)
 
 ## [1.1.0] - 2026-03-22
 ### Added

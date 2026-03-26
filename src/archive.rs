@@ -1,4 +1,5 @@
 // src/archive.rs
+use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
 use std::io::Read;
 use std::path::Path;
@@ -9,6 +10,8 @@ use xz2::read::XzDecoder;
 pub enum ArchiveType {
     Gz,
     Xz,
+    Bzip2,
+    Zstd,
     Unknown,
 }
 
@@ -22,6 +25,8 @@ pub fn detect_type(bytes: &[u8]) -> ArchiveType {
     match bytes {
         [0x1F, 0x8B, ..] => ArchiveType::Gz,
         [0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00, ..] => ArchiveType::Xz,
+        [0x42, 0x5A, 0x68, ..] => ArchiveType::Bzip2,
+        [0x28, 0xB5, 0x2F, 0xFD, ..] => ArchiveType::Zstd,
         _ => ArchiveType::Unknown,
     }
 }
@@ -46,6 +51,16 @@ pub fn extract(
         }
         ArchiveType::Xz => {
             let decoder = XzDecoder::new(reader);
+            let mut archive = Archive::new(decoder);
+            archive.unpack(output_dir)?;
+        }
+        ArchiveType::Bzip2 => {
+            let decoder = BzDecoder::new(reader);
+            let mut archive = Archive::new(decoder);
+            archive.unpack(output_dir)?;
+        }
+        ArchiveType::Zstd => {
+            let decoder = zstd::Decoder::new(reader)?;
             let mut archive = Archive::new(decoder);
             archive.unpack(output_dir)?;
         }

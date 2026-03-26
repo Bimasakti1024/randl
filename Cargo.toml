@@ -19,6 +19,7 @@ eula = false
 
 [dependencies]
 asky = "0.1.1"
+bzip2 = "0.6.1"
 clap = { version = "4", features = ["derive"] }
 data-encoding = "2.10.0"
 dirs = "6.0.0"
@@ -36,6 +37,7 @@ tar = "0.4"
 toml = "1.0.6"
 ureq = { version = "3.2.0", features = ["json"] }
 xz2 = "0.1"
+zstd = "0.13.3"
 
 [profile.release]
 opt-level = "z"
