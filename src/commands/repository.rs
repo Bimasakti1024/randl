@@ -1,7 +1,8 @@
 // src/commands/repository.rs
 use crate::cli::RepositoryAction;
-use crate::config::{create_agent, get_config_file, get_sync_dir, get_toml_config};
+use crate::config::{get_config_file, get_sync_dir, get_toml_config};
 use crate::security::get_file_hash;
+use crate::util::create_agent;
 use std::fs::{read_to_string, remove_file, write};
 use std::time::SystemTime;
 use ureq::Agent;
@@ -21,6 +22,7 @@ pub fn run(action: RepositoryAction) -> Result<(), Box<dyn std::error::Error>> {
 pub enum RepositoryType {
     Reward,
     Nested,
+    Archive,
     Unknown,
 }
 
@@ -37,6 +39,10 @@ pub fn parse_repository(entry: String) -> Repository {
         },
         ["Nested", url] => Repository {
             repo_type: RepositoryType::Nested,
+            url: Some(url.to_string()),
+        },
+        ["Archive", url] => Repository {
+            repo_type: RepositoryType::Archive,
             url: Some(url.to_string()),
         },
         _ => Repository {
@@ -209,6 +215,7 @@ fn check(timeout: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
     let mut dead = 0;
     let mut greward = 0;
     let mut gnested = 0;
+    let mut garchive = 0;
     let mut gunknown = 0;
     let mut gentry = 0;
     let mut genabled = 0;
@@ -259,6 +266,7 @@ fn check(timeout: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
 
         let mut reward = 0;
         let mut nested = 0;
+        let mut archive = 0;
         let mut unknown = 0;
         for entry in &entries {
             let repo_entry = parse_repository(entry.to_string());
@@ -269,6 +277,9 @@ fn check(timeout: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
                 RepositoryType::Nested => {
                     nested += 1;
                 }
+                RepositoryType::Archive => {
+                    archive += 1;
+                }
                 RepositoryType::Unknown => {
                     unknown += 1;
                 }
@@ -277,6 +288,7 @@ fn check(timeout: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
         println!("  Entry: {}", entries.len());
         println!("      Reward: {}", reward);
         println!("      Nested: {}", nested);
+        println!("      Archive: {}", archive);
         println!("      Unknown: {}", unknown);
         println!(
             "  Hash: {}",
@@ -284,16 +296,19 @@ fn check(timeout: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
         );
         greward += reward;
         gnested += nested;
+        garchive += archive;
         gunknown += unknown;
         gentry += entries.len();
     }
 
+    println!("====================");
     println!("Check report:");
     println!("  Alive: {}", alive);
     println!("  Dead: {}", dead);
     println!("  Entry: {}", gentry);
     println!("    Reward: {}", greward);
     println!("    Nested: {}", gnested);
+    println!("    Archive: {}", garchive);
     println!("    Unknown: {}", gunknown);
     println!("  Enabled: {}", genabled);
     println!("  Disabled: {}", gdisabled);

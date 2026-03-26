@@ -174,7 +174,11 @@ Create a text file with one URL per line. Here is an example:
 https://pastebin.com/raw/sqg8Ay0d
 # If you want to link to another repository, use the Nested tag:
 Nested https://gist.githubusercontent.com/...
+# If you decide to compress a reward you can use the Archive tag:
+Archive https://github.com/...
 ```
+
+An Archived reward will be automatically extracted, randl now supports xz and gz.
 
 Some free options to host your repository:
 

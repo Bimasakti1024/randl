@@ -7,15 +7,17 @@ use figment::{
 };
 use rand::prelude::*;
 use size::Size;
-use std::fs::{File, read_to_string};
-use std::io::{self, Read, Write};
-use std::path::Path;
+use std::fs::read_to_string;
+use std::io::Read;
 use ureq::Agent;
 
+use crate::archive::*;
 use crate::cli::{ConfigOverride, PullArgs};
 use crate::commands::repository::{Repository, RepositoryType, parse_repository};
-use crate::config::{Config, create_agent, get_config_file, get_sync_dir};
+use crate::config::{Config, get_config_file, get_sync_dir};
+use crate::download::{download_file, get_download_size};
 use crate::security::scan_url;
+use crate::util::{create_agent, filename_from_url};
 
 enum FollowResult {
     Done,
@@ -143,7 +145,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                     eprintln!("scan_reward_url is enabled but vt_api_key is not set.");
                     return FollowResult::Retry;
                 };
-                let reward_check = scan_url(&agent, vt_api_key, &url);
+                let reward_check = scan_url(agent, vt_api_key, &url);
 
                 match reward_check {
                     Ok(report) => {
@@ -157,29 +159,40 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                         eprintln!("Error: {}", e);
                     }
                 }
-                match Confirm::new("Download?").prompt() {
-                    Ok(answer) => {
-                        if !answer {
-                            return FollowResult::Retry;
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("Error: {}", e);
-                        return FollowResult::Retry;
-                    }
-                }
             }
             if conf_ref.dry_run {
                 println!("Reward is not downloaded because it is a dry run.");
                 FollowResult::Done
             } else {
-                match download(
-                    &url,
-                    agent,
-                    conf_ref.output_directory.as_path(),
-                    conf_ref.no_confirm,
-                ) {
-                    Ok(_) => FollowResult::Done,
+                let output_path = conf_ref.output_directory.join(filename_from_url(url));
+                let output_filename = output_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+
+                let size = get_download_size(agent, url);
+
+                if !conf_ref.no_confirm {
+                    match size {
+                        Some(s) => println!(
+                            "  File: {}\n  Size: {}",
+                            output_filename,
+                            Size::from_bytes(s)
+                        ),
+                        None => println!("  File: {}\n  Size: unknown", output_filename),
+                    }
+
+                    if !Confirm::new("Download this reward?").prompt().unwrap() {
+                        return FollowResult::Retry;
+                    }
+                }
+                println!("Downloading {}", output_filename);
+                match download_file(url, agent, conf_ref.output_directory.as_path()) {
+                    Ok(_) => {
+                        println!("Download successful.");
+                        FollowResult::Done
+                    }
                     Err(e) => {
                         // Distinguish user cancellation from real errors
                         if e.to_string() == "cancelled" {
@@ -200,6 +213,90 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                 Err(e) => FollowResult::Error(e),
             }
         }
+        RepositoryType::Archive => {
+            // Get response and then extract
+            let output_filename = filename_from_url(url);
+            println!("Archived Reward: {}", filename_from_url(url));
+            if conf_ref.scan_reward_url {
+                let Some(vt_api_key) = conf_ref.vt_api_key.as_deref() else {
+                    eprintln!("scan_reward_url is enabled but vt_api_key is not set.");
+                    return FollowResult::Retry;
+                };
+                let reward_check = scan_url(agent, vt_api_key, &url);
+
+                match reward_check {
+                    Ok(report) => {
+                        println!("VirusTotal Check report:");
+                        println!("  Malicious: {}", report.malicious);
+                        println!("  Suspicious: {}", report.suspicious);
+                        println!("  Undetected: {}", report.undetected);
+                        println!("  Harmless: {}", report.harmless);
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                    }
+                }
+            }
+            if conf_ref.dry_run {
+                println!("Reward is not downloaded because it is a dry run.");
+                FollowResult::Done
+            } else {
+                let size = get_download_size(agent, url);
+
+                if !conf_ref.no_confirm {
+                    match size {
+                        Some(s) => println!(
+                            "  File: {}\n  Compressed size: {}",
+                            output_filename,
+                            Size::from_bytes(s)
+                        ),
+                        None => println!("  File: {}\n  Compressed size: unknown", output_filename),
+                    }
+
+                    if !Confirm::new("Download this reward?").prompt().unwrap() {
+                        return FollowResult::Retry;
+                    }
+                }
+                match agent.get(url).call() {
+                    Ok(mut response) => {
+                        if response.status() != 200 {
+                            eprintln!("Server responded: {}", response.status());
+                            return FollowResult::Retry;
+                        }
+                        let mut reader = response.body_mut().as_reader();
+
+                        println!("Determining archive type...");
+                        let mut magic = [0u8; 6];
+                        match reader.read_exact(&mut magic) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                eprintln!("An error occured: {}", e);
+                                return FollowResult::Error(Box::new(e));
+                            }
+                        }
+
+                        let archive_type: ArchiveType = detect_type(&magic);
+
+                        println!("Extracting...");
+                        let full_reader = std::io::Cursor::new(magic).chain(reader);
+
+                        if let Err(e) = extract(
+                            full_reader,
+                            archive_type,
+                            conf_ref.output_directory.as_path(),
+                        ) {
+                            eprintln!("Extraction failed: {}", e);
+                            return FollowResult::Error(e);
+                        }
+                        FollowResult::Done
+                    }
+                    Err(e) => {
+                        eprintln!("An error occured: {}", e);
+                        FollowResult::Retry
+                    }
+                }
+            }
+        }
         _ => {
             // If line format in unrecognised, will retry
             eprintln!("Unrecognised line format, retrying...");
@@ -215,85 +312,6 @@ fn fetch_lines(agent: &ureq::Agent, url: &str) -> Result<Vec<String>, Box<dyn st
         .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
         .map(|l| l.to_string())
         .collect())
-}
-
-fn filename_from_url(url: &str) -> String {
-    // Strip query parameters before extracting filename
-    let path = url.split('?').next().unwrap_or(url);
-    path.split('/')
-        .next_back()
-        .filter(|s| !s.is_empty())
-        .unwrap_or("randl-reward")
-        .to_string()
-}
-
-fn download(
-    url: &str,
-    agent: &Agent,
-    output_dir: &Path,
-    no_confirm: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let output_path = output_dir.join(filename_from_url(url));
-    let output_filename = output_path
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string();
-
-    // HEAD request to get file size
-    let head = agent.head(url).call()?;
-    let size: Option<u64> = head
-        .headers()
-        .get("content-length")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse().ok());
-
-    if !no_confirm {
-        match size {
-            Some(s) => println!(
-                "  File: {}\n  Size: {}",
-                output_filename,
-                Size::from_bytes(s)
-            ),
-            None => println!("  File: {}\n  Size: unknown", output_filename),
-        }
-
-        if !Confirm::new("Download this reward?").prompt()? {
-            return Err("cancelled".into());
-        }
-    }
-    let mut response = agent.get(url).call()?;
-    let mut file = File::create(&output_path)?;
-
-    println!("Downloading {}...", output_filename);
-
-    let mut buffer = [0u8; 8192];
-    let mut bytes_written: u64 = 0;
-    let mut last_reported = 0u64;
-
-    let mut reader = response.body_mut().as_reader();
-
-    loop {
-        let n = reader.read(&mut buffer)?;
-        if n == 0 {
-            break;
-        }
-        file.write_all(&buffer[..n])?;
-        bytes_written += n as u64;
-
-        // Print progress every ~512KB
-        if bytes_written - last_reported >= 524_288 {
-            match size {
-                Some(total) => print!("\r  {:.1}%", bytes_written as f64 / total as f64 * 100.0),
-                None => print!("\r  {}", Size::from_bytes(bytes_written)),
-            }
-            io::stdout().flush()?;
-            last_reported = bytes_written;
-        }
-    }
-
-    println!("\rSaved to {}", output_filename);
-    Ok(())
 }
 
 #[cfg(test)]

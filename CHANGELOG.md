@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-03-26
+### Added
+- Archive repository type that automatically extracts compressed rewards (GZ, XZ, Bzip2, and Zstd supported)
+
 ## [1.1.0] - 2026-03-22
 ### Added
 - status, last sync time, entry data, hash (sha-256) and error checking for check subcommand in repository command
