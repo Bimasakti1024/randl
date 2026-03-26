@@ -41,6 +41,10 @@ pub fn parse_repository(entry: String) -> Repository {
             repo_type: RepositoryType::Nested,
             url: Some(url.to_string()),
         },
+        ["Archive", url] => Repository {
+            repo_type: RepositoryType::Archive,
+            url: Some(url.to_string()),
+        },
         _ => Repository {
             repo_type: RepositoryType::Unknown,
             url: None,

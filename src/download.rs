@@ -19,10 +19,10 @@ pub fn download_file(
     agent: &Agent,
     output_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let output_path = output_dir.join(filename_from_url(&url));
+    let output_path = output_dir.join(filename_from_url(url));
 
     // HEAD request to get file size
-    let size = get_download_size(&agent, url);
+    let size = get_download_size(agent, url);
     let mut response = agent.get(url).call()?;
     let mut file = File::create(&output_path)?;
 

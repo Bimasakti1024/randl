@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.1.0] - 2026
+[UNRELEASED]
+## [1.2.0] - 2026
+### Added
+- Archive repository type to automatically extract an archived reward
+- Archive repository support for GZ, XZ, and Bzip2 (still working on Bzip2)
+
+## [1.1.0] - 2026-03-22
 ### Added
 - status, last sync time, entry data, hash (sha-256) and error checking for check subcommand in repository command
 - enable and disable subcommands for repository command to directly enable or disable a repository without editing the configuration file

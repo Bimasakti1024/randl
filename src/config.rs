@@ -4,8 +4,6 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::{self, create_dir_all, read_to_string, write};
 use std::path::PathBuf;
-use std::time::Duration;
-use ureq::Agent;
 
 pub const DEFAULT_CONFIG: &str = r#"[configuration]
 max_depth = 3

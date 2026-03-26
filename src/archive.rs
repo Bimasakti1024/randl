@@ -5,6 +5,7 @@ use std::path::Path;
 use tar::Archive;
 use xz2::read::XzDecoder;
 
+#[derive(Debug)]
 pub enum ArchiveType {
     Gz,
     Xz,

@@ -8,8 +8,10 @@ use figment::{
 use rand::prelude::*;
 use size::Size;
 use std::fs::read_to_string;
+use std::io::Read;
 use ureq::Agent;
 
+use crate::archive::*;
 use crate::cli::{ConfigOverride, PullArgs};
 use crate::commands::repository::{Repository, RepositoryType, parse_repository};
 use crate::config::{Config, get_config_file, get_sync_dir};
@@ -143,7 +145,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                     eprintln!("scan_reward_url is enabled but vt_api_key is not set.");
                     return FollowResult::Retry;
                 };
-                let reward_check = scan_url(&agent, vt_api_key, &url);
+                let reward_check = scan_url(agent, vt_api_key, &url);
 
                 match reward_check {
                     Ok(report) => {
@@ -169,7 +171,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                     .to_string_lossy()
                     .to_string();
 
-                let size = get_download_size(&agent, url);
+                let size = get_download_size(agent, url);
 
                 if !conf_ref.no_confirm {
                     match size {
@@ -186,7 +188,7 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                     }
                 }
                 println!("Downloading {}", output_filename);
-                match download_file(&url, agent, conf_ref.output_directory.as_path()) {
+                match download_file(url, agent, conf_ref.output_directory.as_path()) {
                     Ok(_) => {
                         println!("Download successful.");
                         FollowResult::Done
@@ -212,8 +214,88 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
             }
         }
         RepositoryType::Archive => {
-            todo!();
-            FollowResult::Done
+            // Get response and then extract
+            let output_filename = filename_from_url(url);
+            println!("Archived Reward: {}", filename_from_url(url));
+            if conf_ref.scan_reward_url {
+                let Some(vt_api_key) = conf_ref.vt_api_key.as_deref() else {
+                    eprintln!("scan_reward_url is enabled but vt_api_key is not set.");
+                    return FollowResult::Retry;
+                };
+                let reward_check = scan_url(agent, vt_api_key, &url);
+
+                match reward_check {
+                    Ok(report) => {
+                        println!("VirusTotal Check report:");
+                        println!("  Malicious: {}", report.malicious);
+                        println!("  Suspicious: {}", report.suspicious);
+                        println!("  Undetected: {}", report.undetected);
+                        println!("  Harmless: {}", report.harmless);
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                    }
+                }
+            }
+            if conf_ref.dry_run {
+                println!("Reward is not downloaded because it is a dry run.");
+                FollowResult::Done
+            } else {
+                let size = get_download_size(agent, url);
+
+                if !conf_ref.no_confirm {
+                    match size {
+                        Some(s) => println!(
+                            "  File: {}\n  Compressed size: {}",
+                            output_filename,
+                            Size::from_bytes(s)
+                        ),
+                        None => println!("  File: {}\n  Compressed size: unknown", output_filename),
+                    }
+
+                    if !Confirm::new("Download this reward?").prompt().unwrap() {
+                        return FollowResult::Retry;
+                    }
+                }
+                match agent.get(url).call() {
+                    Ok(mut response) => {
+                        if response.status() != 200 {
+                            eprintln!("Server responded: {}", response.status());
+                            return FollowResult::Retry;
+                        }
+                        let mut reader = response.body_mut().as_reader();
+
+                        println!("Determining archive type...");
+                        let mut magic = [0u8; 6];
+                        match reader.read_exact(&mut magic) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                eprintln!("An error occured: {}", e);
+                                return FollowResult::Error(Box::new(e));
+                            }
+                        }
+
+                        let archive_type: ArchiveType = detect_type(&magic);
+
+                        println!("Extracting...");
+                        let full_reader = std::io::Cursor::new(magic).chain(reader);
+
+                        if let Err(e) = extract(
+                            full_reader,
+                            archive_type,
+                            conf_ref.output_directory.as_path(),
+                        ) {
+                            eprintln!("Extraction failed: {}", e);
+                            return FollowResult::Error(e);
+                        }
+                        FollowResult::Done
+                    }
+                    Err(e) => {
+                        eprintln!("An error occured: {}", e);
+                        FollowResult::Retry
+                    }
+                }
+            }
         }
         _ => {
             // If line format in unrecognised, will retry
