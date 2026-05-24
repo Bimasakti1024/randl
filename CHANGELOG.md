@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-05-24
+### Security
+- Upgraded rustls-webpki crate from 0.103.10 to 0.103.13
+- Upgraded rand crate from 0.10.0 to 0.10.1
+
 ## [1.2.0] - 2026-03-26
 ### Added
 - Archive repository type that automatically extracts compressed rewards (GZ, XZ, Bzip2, and Zstd supported)
