@@ -231,6 +231,12 @@ fn follow(repos: &[String], agent: &Agent, config: &Config, current_depth: u32) 
                         println!("  Suspicious: {}", report.suspicious);
                         println!("  Undetected: {}", report.undetected);
                         println!("  Harmless: {}", report.harmless);
+
+                        if report.malicious > 0 || report.suspicious > 0 {
+                            if !Confirm::new("Reward detected contain a malicious or suspicious file, Proceed download? ").prompt().unwrap() {
+                                return FollowResult::Retry;
+                            }
+                        }
                     }
                     Err(e) => {
                         eprintln!("Error: {}", e);
