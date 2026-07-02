@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3] - 2026-07-02
+### Added
+- Confirmation prompt on malicious/suspicious file download
+
+### Security
+- Upgraded tar crate to 0.4.46
+
+
 ## [1.2.1] - 2026-05-24
 ### Security
 - Upgraded rustls-webpki crate from 0.103.10 to 0.103.13
